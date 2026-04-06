@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, Eye, EyeOff, MoreHorizontal, Check, Clock, Zap, Save, Copy, History, Trash2, HelpCircle, Edit, CheckCircle, Upload, Plus, Download } from 'lucide-react';
 
@@ -8,11 +8,62 @@ const EditBatchPage = () => {
   const [batchTitle, setBatchTitle] = useState('New Batch - AC Apr 02, 2026 [2]');
   const [selectedTemplate, setSelectedTemplate] = useState(templateId);
   const [currentStep, setCurrentStep] = useState(1); // Start on Step 1
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleBack = () => {
+    if (currentStep === 2) {
+      setCurrentStep(1);
+    } else if (currentStep === 3) {
+      setCurrentStep(2);
+    }
+  };
+
+  const handleCreateBatch = () => {
+    // Create batch data
+    const newBatch = {
+      id: Date.now(), // Simple ID generation
+      name: batchTitle,
+      category: "Claims (IVR)",
+      status: "calling", // Start as calling when created
+      calls: { current: 0, total: 100 }, // Mock data - would be parsed from CSV in real app
+      info: getTotalFields(),
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      speed: "Max",
+      creator: "AC",
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
+      // Store additional batch details for viewing
+      template: templates.find(t => t.id === selectedTemplate)?.name || 'Unknown Template',
+      uploadedFile: uploadedFile ? {
+        name: uploadedFile.name,
+        size: uploadedFile.size,
+        type: uploadedFile.type
+      } : null,
+      fieldsConfigured: formData['claim-status'].conditions
+    };
+
+    // Get existing batches from localStorage
+    const existingBatches = JSON.parse(localStorage.getItem('batches') || '[]');
+
+    // Add new batch
+    const updatedBatches = [newBatch, ...existingBatches];
+
+    // Save to localStorage
+    localStorage.setItem('batches', JSON.stringify(updatedBatches));
+
+    // Show success message
+    alert(`Batch "${batchTitle}" has been created successfully!`);
+
+    // Navigate back to dashboard
+    navigate('/');
+  };
 
   const handleContinue = () => {
     if (currentStep === 1) {
       setCurrentStep(2);
       setBatchTitle('New Batch - AC Apr 02, 2026 [3]');
+    } else if (currentStep === 2 && uploadedFile) {
+      setCurrentStep(3);
     }
   };
 
@@ -124,18 +175,22 @@ const EditBatchPage = () => {
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
               currentStep >= 2 ? 'bg-[#00B8D9]' : 'border-2 border-[#D0D5DD] text-[#98A2B3]'
             }`}>
-              2
+              {currentStep > 2 ? <Check size={16} /> : 2}
             </div>
             <span className={`font-semibold ${currentStep >= 2 ? 'text-[#1A1C21]' : 'text-[#98A2B3]'}`}>
               Upload Data
             </span>
           </div>
-          <div className="w-16 h-px bg-[#EAECEF]"></div>
+           <div className={`w-16 h-px ${currentStep > 2 ? 'bg-[#00B8D9]' : 'bg-[#EAECEF]'}`}></div>
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 border-2 border-[#D0D5DD] rounded-full flex items-center justify-center text-[#98A2B3] font-bold">
-              3
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+              currentStep >= 3 ? 'bg-[#00B8D9]' : 'border-2 border-[#D0D5DD] text-[#98A2B3]'
+            }`}>
+              {currentStep > 3 ? <Check size={16} /> : 3}
             </div>
-            <span className="text-[#98A2B3]">Review & Schedule</span>
+            <span className={`font-semibold ${currentStep >= 3 ? 'text-[#1A1C21]' : 'text-[#98A2B3]'}`}>
+              Review & Schedule
+            </span>
           </div>
         </div>
       </div>
@@ -325,7 +380,7 @@ const EditBatchPage = () => {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : currentStep === 2 ? (
             /* Upload Data Step */
             <div className="bg-white border border-[#EAECEF] rounded-xl">
               <div className="p-8">
@@ -359,32 +414,108 @@ const EditBatchPage = () => {
                       <p className="text-sm text-[#717784] mb-4">
                         or click the button below to browse files
                       </p>
-                      <button className="px-8 py-3 bg-[#00B8D9] text-white rounded-lg font-semibold hover:bg-[#00A3C1] transition-colors">
+                      <label htmlFor="file-upload" className="px-8 py-3 bg-[#00B8D9] text-white rounded-lg font-semibold hover:bg-[#00A3C1] transition-colors cursor-pointer">
                         Upload CSV
-                      </button>
+                      </label>
+                      <input type="file" accept=".csv" className="hidden" id="file-upload" ref={fileInputRef} onChange={(e) => setUploadedFile(e.target.files[0])} />
                     </div>
+                  </div>
+                </div>
+
+                {/* Display selected file */}
+                {uploadedFile && (
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-800 font-medium">Selected file: {uploadedFile.name}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : currentStep === 3 ? (
+            /* Review & Schedule Step */
+            <div className="bg-white border border-[#EAECEF] rounded-xl">
+              <div className="p-8">
+                <h2 className="text-xl font-bold text-[#1A1C21] mb-6">Review & Schedule Batch</h2>
+
+                {/* Batch Summary */}
+                <div className="space-y-4 mb-8">
+                  <div className="flex justify-between items-center py-3 border-b border-[#EAECEF]">
+                    <span className="text-[#717784]">Batch Title</span>
+                    <span className="text-[#1A1C21] font-medium">{batchTitle}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-[#EAECEF]">
+                    <span className="text-[#717784]">Template</span>
+                    <span className="text-[#1A1C21] font-medium">{templates.find(t => t.id === selectedTemplate)?.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-[#EAECEF]">
+                    <span className="text-[#717784]">Data File</span>
+                    <span className="text-[#1A1C21] font-medium">{uploadedFile ? uploadedFile.name : 'No file selected'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-[#EAECEF]">
+                    <span className="text-[#717784]">Call Type</span>
+                    <span className="text-[#1A1C21] font-medium">Claims (IVR)</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3">
+                    <span className="text-[#717784]">Total Fields</span>
+                    <span className="text-[#1A1C21] font-medium">{getTotalFields()} fields</span>
+                  </div>
+                </div>
+
+                {/* Schedule Options */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold text-[#1A1C21]">Schedule Batch</h3>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <input type="radio" id="schedule-now" name="schedule" defaultChecked className="w-4 h-4 text-[#00B8D9] focus:ring-[#00B8D9]" />
+                      <label htmlFor="schedule-now" className="text-[#1A1C21] font-medium">Start immediately</label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <input type="radio" id="schedule-later" name="schedule" className="w-4 h-4 text-[#00B8D9] focus:ring-[#00B8D9]" />
+                      <label htmlFor="schedule-later" className="text-[#1A1C21] font-medium">Schedule for later</label>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <button
+                      onClick={handleCreateBatch}
+                      className="w-full px-6 py-3 bg-[#00B8D9] text-white rounded-lg font-semibold hover:bg-[#00A3C1] transition-colors"
+                    >
+                      Create Batch
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Footer Actions */}
           <div className="mt-8 flex justify-between items-center">
-            <button className="px-6 py-3 border border-[#D0D5DD] rounded-lg text-[#4A4F59] font-semibold hover:bg-[#F7F8FA] transition-colors">
-              Save & Close
-            </button>
-            <button
-              onClick={currentStep === 1 ? handleContinue : undefined}
-              className={`px-6 py-3 rounded-lg font-semibold ${
-                currentStep === 1
-                  ? 'bg-[#00B8D9] text-white hover:bg-[#00A3C1] transition-colors'
-                  : 'bg-[#98A2B3] text-white cursor-not-allowed'
-              }`}
-              disabled={currentStep !== 1}
-            >
-              Continue
-            </button>
+            <div className="flex space-x-3">
+              {currentStep > 1 && (
+                <button
+                  onClick={handleBack}
+                  className="px-6 py-3 border border-[#D0D5DD] rounded-lg text-[#4A4F59] font-semibold hover:bg-[#F7F8FA] transition-colors"
+                >
+                  Back
+                </button>
+              )}
+              <button className="px-6 py-3 border border-[#D0D5DD] rounded-lg text-[#4A4F59] font-semibold hover:bg-[#F7F8FA] transition-colors">
+                Save & Close
+              </button>
+            </div>
+            {currentStep < 3 && (
+              <button
+                onClick={handleContinue}
+                className={`px-6 py-3 rounded-lg font-semibold ${
+                  (currentStep === 1) || (currentStep === 2 && uploadedFile)
+                    ? 'bg-[#00B8D9] text-white hover:bg-[#00A3C1] transition-colors'
+                    : 'bg-[#98A2B3] text-white cursor-not-allowed'
+                }`}
+                disabled={currentStep === 1 ? false : !uploadedFile}
+              >
+                Continue
+              </button>
+            )}
           </div>
         </div>
       </div>

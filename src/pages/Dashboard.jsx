@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -28,6 +28,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [showRecentDropdown, setShowRecentDropdown] = useState(false);
+  const [recentlyViewedBatches, setRecentlyViewedBatches] = useState([]);
   const [timeRange, setTimeRange] = useState('30d');
   const [showTimeFilter, setShowTimeFilter] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -70,44 +71,53 @@ const Dashboard = () => {
     return data[range] || data['30d'];
   };
 
-  const recentlyViewedBatches = [
-    {
-      id: 1,
-      name: "0401 Part1",
-      category: "Claims (IVR)",
-      status: "calling",
-      calls: { current: 38, total: 495 },
-      info: 0,
-      date: "Apr 1st, 2026",
-      speed: "Max",
-      creator: "AC",
-      createdAt: "4/1/2026"
-    },
-    {
-      id: 2,
-      name: "New Batch - AC Apr 02, 2026 [2]",
-      category: "Claims (IVR)",
-      status: "draft",
-      calls: null,
-      info: 38,
-      date: "Apr 2nd, 2026",
-      speed: "Max",
-      creator: "AC",
-      createdAt: "4/2/2026"
-    },
-    {
-      id: 3,
-      name: "New Batch - AC Apr 02, 2026 [1]",
-      category: "Claims (IVR)",
-      status: "draft",
-      calls: null,
-      info: 10,
-      date: "Apr 2nd, 2026",
-      speed: "Standard",
-      creator: "AC",
-      createdAt: "4/2/2026"
+  // Load batches from localStorage on component mount
+  useEffect(() => {
+    const savedBatches = JSON.parse(localStorage.getItem('batches') || '[]');
+    if (savedBatches.length > 0) {
+      setRecentlyViewedBatches(savedBatches);
+    } else {
+      // Default batches if none saved
+      setRecentlyViewedBatches([
+        {
+          id: 1,
+          name: "0401 Part1",
+          category: "Claims (IVR)",
+          status: "calling",
+          calls: { current: 38, total: 495 },
+          info: 0,
+          date: "Apr 1st, 2026",
+          speed: "Max",
+          creator: "AC",
+          createdAt: "4/1/2026"
+        },
+        {
+          id: 2,
+          name: "New Batch - AC Apr 02, 2026 [2]",
+          category: "Claims (IVR)",
+          status: "draft",
+          calls: null,
+          info: 38,
+          date: "Apr 2nd, 2026",
+          speed: "Max",
+          creator: "AC",
+          createdAt: "4/2/2026"
+        },
+        {
+          id: 3,
+          name: "New Batch - AC Apr 02, 2026 [1]",
+          category: "Claims (IVR)",
+          status: "draft",
+          calls: null,
+          info: 10,
+          date: "Apr 2nd, 2026",
+          speed: "Standard",
+          creator: "AC",
+          createdAt: "4/2/2026"
+        }
+      ]);
     }
-  ];
+  }, []);
 
   const handleStopBatch = (batchId) => {
     if (window.confirm(`Are you sure you want to stop batch "${batchId}"?`)) {
